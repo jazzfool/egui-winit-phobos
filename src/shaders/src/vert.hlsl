@@ -9,9 +9,9 @@ struct VS_INPUT {
 
 struct VS_OUTPUT {
     float4 Position : SV_Position;
-    [[vk::location(1)]]
+    [[vk::location(0)]]
     float4 Color : COLOR0;
-    [[vk::location(2)]]
+    [[vk::location(1)]]
     float2 UV : UV0;
 };
 
