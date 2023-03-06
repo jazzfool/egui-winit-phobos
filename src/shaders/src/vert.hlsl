@@ -20,12 +20,10 @@ struct PushConstants {
     float2 screen_size;
 } pc;
 
-float3 srgb_to_linear(float3 srgb){
-    bool3 cutoff = srgb < float3(0.04045, 0.04045, 0.04045);
-    float3 lower = srgb / float3(12.92, 12.92, 12.92);
-    float3 higher = pow((srgb + float3(0.055, 0.055, 0.055)) / float3(1.055, 1.055, 1.055), float3(2.4, 2.4, 2.4));
-    return lerp(higher, lower, cutoff);
+float3 srgb_to_linear(float3 srgb) {
+    return srgb * (srgb * (srgb * 0.305306011 + 0.682171111) + 0.012522878);
 }
+
 
 VS_OUTPUT main(VS_INPUT input) {
     VS_OUTPUT output;

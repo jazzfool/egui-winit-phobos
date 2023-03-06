@@ -12,5 +12,6 @@ Texture2D<float4> font_texture;
 SamplerState font_sampler;
 
 float4 main(in PS_INPUT input) : SV_TARGET {
-    return input.Color * font_texture.Sample(font_sampler, input.UV);
+    float4 tex_color = font_texture.Sample(font_sampler, input.UV);
+    return input.Color * tex_color;
 }

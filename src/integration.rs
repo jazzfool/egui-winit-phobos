@@ -76,7 +76,26 @@ impl Integration {
             pipelines.lock().unwrap().create_named_pipeline(pci)?;
         }
 
-        let sampler = ph::Sampler::default(device.clone())?;
+        let sampler = ph::Sampler::new(device.clone(), vk::SamplerCreateInfo {
+            s_type: vk::StructureType::SAMPLER_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: Default::default(),
+            mag_filter: vk::Filter::LINEAR,
+            min_filter: vk::Filter::LINEAR,
+            mipmap_mode: vk::SamplerMipmapMode::LINEAR,
+            address_mode_u: vk::SamplerAddressMode::CLAMP_TO_EDGE,
+            address_mode_v: vk::SamplerAddressMode::CLAMP_TO_EDGE,
+            address_mode_w: vk::SamplerAddressMode::CLAMP_TO_EDGE,
+            mip_lod_bias: 0.0,
+            anisotropy_enable: vk::FALSE,
+            max_anisotropy: 0.0,
+            compare_enable: vk::FALSE,
+            compare_op: vk::CompareOp::ALWAYS,
+            min_lod: 0.0,
+            max_lod: vk::LOD_CLAMP_NONE,
+            border_color: Default::default(),
+            unnormalized_coordinates: vk::FALSE,
+        })?;
 
         Ok(Self {
             context,
