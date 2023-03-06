@@ -1,0 +1,18 @@
+[package]
+name = "egui-winit-phobos"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+phobos = { git = "https://github.com/NotAPenguin0/phobos-rs", features = ["shader-reflection", "hlsl"] }
+anyhow = "1.0.53"
+egui = "0.21.0"
+egui-winit = "0.21.0"
+winit = "0.28.1"
+raw-window-handle = { version = "0.5.0" }
+
+
+[build-dependencies]
+anyhow = "1.0.53"
