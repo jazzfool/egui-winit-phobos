@@ -11,6 +11,6 @@ Texture2D<float4> font_texture;
 [[vk::combinedImageSampler, vk::binding(0, 0)]]
 SamplerState font_sampler;
 
-float4 main(PS_INPUT input) : SV_TARGET {
+float4 main(in PS_INPUT input) : SV_TARGET {
     return input.Color * font_texture.Sample(font_sampler, input.UV);
 }
