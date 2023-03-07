@@ -382,7 +382,8 @@ impl Integration {
             delta.image.width() as u32,
             delta.image.height() as u32,
             vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::TRANSFER_SRC,
-            vk::Format::R8G8B8A8_UNORM
+            vk::Format::R8G8B8A8_UNORM,
+            vk::SampleCountFlags::TYPE_1
         )?;
         let view = image.view(vk::ImageAspectFlags::COLOR)?;
 
