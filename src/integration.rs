@@ -152,14 +152,13 @@ impl Integration {
 
     pub async fn paint<'s: 'e, 'e, 'q>(
         &'s mut self,
-        graph: ph::PassGraph<'e, 'q, ph::domain::All>,
         inputs: &[ph::VirtualResource], // Sampled images
         output: ph::VirtualResource,
         load_op: vk::AttachmentLoadOp,
         clear_value: Option<vk::ClearColorValue>,
         clipped_meshes: Vec<egui::ClippedPrimitive>,
         textures_delta: egui::TexturesDelta,
-    ) -> Result<ph::PassGraph<'e, 'q, ph::domain::All>> {
+    ) -> Result<ph::Pass<'e, 'q, ph::domain::All>> {
 
         for (id, delta) in textures_delta.set {
             self.update_texture(id, delta).await?;
@@ -168,7 +167,7 @@ impl Integration {
         // Free textures
         self.textures.retain(|tex, _| !textures_delta.free.contains(tex));
         // Create pass
-        graph.add_pass(self.get_pass(clipped_meshes, inputs, output, load_op, clear_value)?)
+        self.get_pass(clipped_meshes, inputs, output, load_op, clear_value)
     }
 
     fn get_pass<'s: 'e, 'e, 'q>(&'s mut self,
