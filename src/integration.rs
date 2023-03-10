@@ -160,8 +160,8 @@ impl Integration {
         textures_delta: egui::TexturesDelta,
     ) -> Result<ph::Pass<'e, 'q, ph::domain::All>> {
 
-        for (id, delta) in textures_delta.set {
-            self.update_texture(id, delta).await?;
+        for (id, delta) in &textures_delta.set {
+            self.update_texture(*id, &delta).await?;
         }
 
         // Free textures
@@ -309,7 +309,7 @@ impl Integration {
         })
     }
 
-    async fn update_texture(&mut self, texture: TextureId, delta: ImageDelta) -> Result<()> {
+    async fn update_texture(&mut self, texture: TextureId, delta: &ImageDelta) -> Result<()> {
         let (image, view) = self.upload_image(texture, &delta)?.await;
         // We now have a texture in GPU memory. If delta pos exists, we need to update an existing texture.
         // Otherwise, we need to register it as a new texture
