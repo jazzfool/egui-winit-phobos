@@ -12,6 +12,8 @@ use egui::epaint::{ImageDelta, Primitive};
 use egui_winit::EventResponse;
 use winit::window::Window;
 
+use log::trace;
+
 pub struct Integration {
     context: Context,
     egui_winit: egui_winit::State,
@@ -161,6 +163,7 @@ impl Integration {
     ) -> Result<ph::Pass<'e, 'q, ph::domain::All>> {
 
         for (id, delta) in &textures_delta.set {
+            trace!("Updating texture id: {:?}", id);
             self.update_texture(*id, &delta).await?;
         }
 
