@@ -337,7 +337,7 @@ impl Integration {
                 dst,
                 vk::PipelineStageFlags::TOP_OF_PIPE,
                 vk::PipelineStageFlags::TRANSFER,
-                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 vk::AccessFlags::NONE,
                 vk::AccessFlags::TRANSFER_WRITE)
