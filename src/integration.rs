@@ -2,8 +2,8 @@ use std::alloc::alloc;
 use std::sync::{Arc, Mutex};
 use egui::{Context, epaint, ImageData, TextureId};
 
-use phobos as ph;
-use phobos::{GraphicsCmdBuffer, IncompleteCmdBuffer, TransferCmdBuffer, vk};
+use phobos::prelude::*;
+
 use winit::event_loop::EventLoop;
 
 use anyhow::Result;
@@ -14,25 +14,23 @@ use winit::window::Window;
 
 use log::trace;
 
-pub struct Integration {
+pub struct Integration<A: Allocator + 'static> {
     context: Context,
     egui_winit: egui_winit::State,
-    device: Arc<ph::Device>,
-    allocator: Arc<Mutex<ph::Allocator>>,
-    exec: Arc<ph::ExecutionManager>,
-    sampler: ph::Sampler,
+    device: Arc<Device>,
+    allocator: A,
+    exec: ExecutionManager,
+    sampler: Sampler,
     width: u32,
     height: u32,
     scale_factor: f32,
-    textures: AHashMap<TextureId, (ph::Image, ph::ImageView)>,
-    user_textures: AHashMap<TextureId, ph::ImageView>,
-    pipelines: Arc<Mutex<ph::PipelineCache>>,
-    descriptors: Arc<Mutex<ph::DescriptorCache>>,
+    textures: AHashMap<TextureId, (Image<A>, ImageView)>,
+    user_textures: AHashMap<TextureId, ImageView>,
+    pipelines: Arc<Mutex<PipelineCache>>,
+    descriptors: Arc<Mutex<DescriptorCache>>,
 }
 
-// TODO: Phobos: Create push constants
-
-impl Integration {
+impl<A: Allocator + 'static> Integration<A> {
     fn bytes_to_spirv(buffer: &[u8]) -> Vec<u32> {
         let (_, binary, _) = unsafe { buffer.align_to::<u32>() };
         Vec::from(binary)
@@ -44,11 +42,11 @@ impl Integration {
         event_loop: &EventLoop<T>,
         font_definitions: egui::FontDefinitions,
         style: egui::Style,
-        device: Arc<ph::Device>,
-        allocator: Arc<Mutex<ph::Allocator>>,
-        exec: Arc<ph::ExecutionManager>,
-        pipelines: Arc<Mutex<ph::PipelineCache>>,
-        descriptors: Arc<Mutex<ph::DescriptorCache>>,) -> Result<Self> {
+        device: Arc<Device>,
+        allocator: A,
+        exec: ExecutionManager,
+        pipelines: Arc<Mutex<PipelineCache>>,
+        descriptors: Arc<Mutex<DescriptorCache>>,) -> Result<Self> {
 
         let context = Context::default();
         context.set_fonts(font_definitions);
@@ -59,10 +57,10 @@ impl Integration {
         let vtx_code = include_bytes!("shaders/spv/vert.spv");
         let frag_code = include_bytes!("shaders/spv/frag.spv");
 
-        let vtx = ph::ShaderCreateInfo::from_spirv(vk::ShaderStageFlags::VERTEX, Self::bytes_to_spirv(vtx_code));
-        let frag = ph::ShaderCreateInfo::from_spirv(vk::ShaderStageFlags::FRAGMENT, Self::bytes_to_spirv(frag_code));
+        let vtx = ShaderCreateInfo::from_spirv(vk::ShaderStageFlags::VERTEX, Self::bytes_to_spirv(vtx_code));
+        let frag = ShaderCreateInfo::from_spirv(vk::ShaderStageFlags::FRAGMENT, Self::bytes_to_spirv(frag_code));
 
-        let pci = ph::PipelineBuilder::new("egui_pipeline")
+        let pci = PipelineBuilder::new("egui_pipeline")
             .vertex_input(0, vk::VertexInputRate::VERTEX)
             .vertex_attribute(0, 0, vk::Format::R32G32_SFLOAT)?
             .vertex_attribute(0, 1, vk::Format::R32G32_SFLOAT)?
@@ -78,7 +76,7 @@ impl Integration {
             pipelines.lock().unwrap().create_named_pipeline(pci)?;
         }
 
-        let sampler = ph::Sampler::new(device.clone(), vk::SamplerCreateInfo {
+        let sampler = Sampler::new(device.clone(), vk::SamplerCreateInfo {
             s_type: vk::StructureType::SAMPLER_CREATE_INFO,
             p_next: std::ptr::null(),
             flags: Default::default(),
@@ -117,7 +115,7 @@ impl Integration {
     }
 
     /// handling winit event.
-    pub fn handle_event(&mut self, winit_event: &egui_winit::winit::event::WindowEvent<'_>) -> EventResponse {
+    pub fn handle_event(&mut self, winit_event: &winit::event::WindowEvent<'_>) -> EventResponse {
         self.egui_winit.on_event(&self.context, winit_event)
     }
 
@@ -138,13 +136,13 @@ impl Integration {
         self.context.clone()
     }
 
-    pub fn register_user_texture(&mut self, image_view: &ph::ImageView) -> TextureId {
+    pub fn register_user_texture(&mut self, image_view: &ImageView) -> TextureId {
         self.user_textures.insert(TextureId::User(image_view.id), image_view.clone());
         TextureId::User(image_view.id)
     }
 
     pub fn unregister_user_texture(&mut self, texture_id: TextureId) {
-        if let TextureId::User(id) = texture_id {
+        if let TextureId::User(_) = texture_id {
             self.user_textures.remove(&texture_id);
         } else {
             eprintln!("The internal texture cannot be unregistered; please pass the texture ID of UserTexture.");
@@ -158,13 +156,13 @@ impl Integration {
 
     pub async fn paint<'s: 'e, 'e, 'q>(
         &'s mut self,
-        inputs: &[ph::VirtualResource], // Sampled images
-        output: ph::VirtualResource,
+        inputs: &[VirtualResource], // Sampled images
+        output: &VirtualResource,
         load_op: vk::AttachmentLoadOp,
         clear_value: Option<vk::ClearColorValue>,
         clipped_meshes: Vec<egui::ClippedPrimitive>,
         textures_delta: egui::TexturesDelta,
-    ) -> Result<ph::Pass<'e, 'q, ph::domain::All>> {
+    ) -> Result<Pass<'e, 'q, domain::All, A>> {
 
         for (id, delta) in &textures_delta.set {
             trace!("Updating texture id: {:?}", id);
@@ -179,14 +177,14 @@ impl Integration {
 
     fn get_pass<'s: 'e, 'e, 'q>(&'s mut self,
                                 clipped_meshes: Vec<egui::ClippedPrimitive>,
-                                inputs: &[ph::VirtualResource], // Sampled images
-                                output: ph::VirtualResource,
+                                inputs: &[VirtualResource], // Sampled images
+                                output: &VirtualResource,
                                 load_op: vk::AttachmentLoadOp,
-                                clear_value: Option<vk::ClearColorValue>) -> Result<ph::Pass<'e, 'q, ph::domain::All>> {
-        let mut builder = ph::PassBuilder::render("egui_render")
+                                clear_value: Option<vk::ClearColorValue>) -> Result<Pass<'e, 'q, domain::All, A>> {
+        let mut builder = PassBuilder::render("egui_render")
             .color_attachment(output, load_op, clear_value)?;
         for input in inputs {
-            builder = builder.sample_image(input.clone(), ph::PipelineStage::FRAGMENT_SHADER);
+            builder = builder.sample_image(input, PipelineStage::FRAGMENT_SHADER);
         }
 
         builder = builder.execute(move |mut cmd, mut ifc, bindings| {
@@ -199,9 +197,9 @@ impl Integration {
             let mut vertex_base = 0;
             let mut index_base = 0;
 
-            let mut cmd = cmd.bind_graphics_pipeline("egui_pipeline", self.pipelines.clone())?;
-            cmd = cmd.bind_vertex_buffer(0, vertex_buffer);
-            cmd = cmd.bind_index_buffer(idx_buffer, vk::IndexType::UINT32);
+            let mut cmd = cmd.bind_graphics_pipeline("egui_pipeline")?;
+            cmd = cmd.bind_vertex_buffer(0, &vertex_buffer);
+            cmd = cmd.bind_index_buffer(&idx_buffer, vk::IndexType::UINT32);
 
             let vtx_slice = vertex_buffer.mapped_slice::<u8>()?;
             let idx_slice = idx_buffer.mapped_slice::<u8>()?;
@@ -230,11 +228,8 @@ impl Integration {
                 } else {
                     self.textures.get(&mesh.texture_id).unwrap().1.clone()
                 };
-                cmd = cmd.bind_new_descriptor_set(0, self.descriptors.clone(),
-                                                  ph::DescriptorSetBuilder::new()
-                                                      .bind_sampled_image(0, view.clone(), &self.sampler)
-                                                      .build()
-                )?;
+
+                cmd = cmd.bind_sampled_image(0, 0, &view, &self.sampler)?;
 
                 let v_slice = &mesh.vertices;
                 let v_size = std::mem::size_of_val(&v_slice[0]);
@@ -280,7 +275,7 @@ impl Integration {
                         height: (max.y.round() - min.y) as u32,
                     },
                 });
-                cmd = cmd.draw_indexed(mesh.indices.len() as u32, 1, index_base, vertex_base, 0);
+                cmd = cmd.draw_indexed(mesh.indices.len() as u32, 1, index_base, vertex_base, 0)?;
 
                 vertex_base += mesh.vertices.len() as i32;
                 index_base += mesh.indices.len() as u32;
@@ -317,12 +312,12 @@ impl Integration {
     }
 
     async fn update_texture(&mut self, texture: TextureId, delta: &ImageDelta) -> Result<()> {
-        let (image, view) = self.upload_image(texture, &delta)?.await;
+        let (image, view) = self.upload_image(texture, &delta).await?;
         // We now have a texture in GPU memory. If delta pos exists, we need to update an existing texture.
         // Otherwise, we need to register it as a new texture
         if let Some(pos) = delta.pos {
             let existing_texture = self.textures.get(& texture);
-            if let Some((existing_image, existing_view)) = existing_texture {
+            if let Some((_, existing_view)) = existing_texture {
                 self.update_image(texture, pos, &delta, &view, existing_view).await?;
             }
         } else {
@@ -332,11 +327,11 @@ impl Integration {
         Ok(())
     }
 
-    async fn update_image(&self, texture: TextureId, pos: [usize; 2], delta: &ImageDelta, src: &ph::ImageView, dst: &ph::ImageView) -> Result<()> {
+    async fn update_image(&self, _texture: TextureId, pos: [usize; 2], delta: &ImageDelta, src: &ImageView, dst: &ImageView) -> Result<()> {
         let top_left = vk::Offset3D { x: pos[0] as i32, y: pos[1] as i32, z: 0 };
         let bottom_right = vk::Offset3D { x: pos[0] as i32 + delta.image.width() as i32, y: pos[1] as i32 + delta.image.height() as i32, z: 1 };
         let src_offsets = [ vk::Offset3D { x: 0, y: 0, z: 0 }, vk::Offset3D { x: dst.size.width as i32, y: dst.size.height as i32, z: dst.size.depth as i32 } ];
-        let cmd = self.exec.on_domain::<ph::domain::Graphics>()?
+        let cmd = self.exec.on_domain::<domain::Graphics>(None, None)?
             .transition_image(
                 dst,
                 vk::PipelineStageFlags::TOP_OF_PIPE,
@@ -363,28 +358,28 @@ impl Integration {
                 vk::AccessFlags::TRANSFER_WRITE,
                 vk::AccessFlags::NONE)
             .finish()?;
-        ph::ExecutionManager::submit(self.exec.clone(), cmd)?.await;
+        self.exec.submit(cmd)?.await;
         Ok(())
     }
 
-    fn upload_image(&mut self, texture: TextureId, delta: &ImageDelta) -> Result<ph::GpuFuture<(ph::Image, ph::ImageView)>> {
+    async fn upload_image(&mut self, _texture: TextureId, delta: &ImageDelta) -> Result<(Image<A>, ImageView)> {
         // Extract pixel data from egui
         let data = Self::get_pixel_data(&delta)?;
-        let staging = ph::Buffer::new(
+        let staging = Buffer::new(
             self.device.clone(),
-            self.allocator.clone(),
+            &mut self.allocator,
             data.len() as vk::DeviceSize,
             vk::BufferUsageFlags::TRANSFER_SRC,
-            ph::MemoryLocation::CpuToGpu
+            MemoryType::CpuToGpu
         )?;
         // Allocate staging buffer and copy pixel data to it
         let mut staging_view = staging.view_full();
         staging_view.mapped_slice::<u8>()?.copy_from_slice(&data);
 
         // Create a new image and an image view for it.
-        let image = ph::Image::new(
+        let image = Image::new(
             self.device.clone(),
-            self.allocator.clone(),
+            &mut self.allocator,
             delta.image.width() as u32,
             delta.image.height() as u32,
             vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::TRANSFER_SRC,
@@ -393,7 +388,7 @@ impl Integration {
         )?;
         let view = image.view(vk::ImageAspectFlags::COLOR)?;
 
-        let cmd = self.exec.on_domain::<ph::domain::Transfer>()?;
+        let cmd = self.exec.on_domain::<domain::Transfer>(None, None)?;
         let cmd = cmd.transition_image(
             &view,
             vk::PipelineStageFlags::TOP_OF_PIPE,
@@ -414,10 +409,11 @@ impl Integration {
         );
 
         let cmd = cmd.finish()?;
-        let fence = ph::ExecutionManager::submit(self.exec.clone(), cmd)?;
-        // WOOO GPU FUTURES
-        Ok(fence.with_cleanup(move || {
-            drop(staging);
-        }).attach_value((image, view)))
+        self.exec.submit(cmd)?
+            .with_cleanup(move || {
+                drop(staging)
+            })
+            .attach_value(Ok((image, view)))
+            .await
     }
 }
