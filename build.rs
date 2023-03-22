@@ -1,18 +1,16 @@
-use std::{env};
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Result;
 
 fn get_dxc_path() -> Result<PathBuf> {
-    Ok(env::var("VULKAN_SDK").map(|sdk| {
-        PathBuf::from(&sdk).join("Bin/dxc")
-    })?)
+    Ok(env::var("VULKAN_SDK").map(|sdk| PathBuf::from(&sdk).join("Bin/dxc"))?)
 }
 
 enum Stage {
     Vertex,
-    Fragment
+    Fragment,
 }
 
 #[allow(unreachable_patterns)]
@@ -20,8 +18,10 @@ fn hlsl_profile(stage: Stage) -> Result<String> {
     Ok(match stage {
         Stage::Vertex => "vs",
         Stage::Fragment => "ps",
-        _ => todo!()
-    }.to_owned() + "_6_7")
+        _ => todo!(),
+    }
+        .to_owned()
+        + "_6_7")
 }
 
 fn compile_hlsl(path: &Path, out: &Path, stage: Stage) -> Result<()> {
@@ -47,15 +47,27 @@ fn compile_hlsl(path: &Path, out: &Path, stage: Stage) -> Result<()> {
         // Our input file
         .arg(path)
         .output()?;
-    println!("Error compiling shader: {}", String::from_utf8(output.stderr).unwrap());
+    println!(
+        "Error compiling shader: {}",
+        String::from_utf8(output.stderr).unwrap()
+    );
     Ok(())
 }
-
 
 fn main() {
     println!("cargo:rerun-if-changed=src/shaders/src/vert.hlsl");
     println!("cargo:rerun-if-changed=src/shaders/src/frag.hlsl");
 
-    compile_hlsl("src/shaders/src/vert.hlsl".as_ref(), "src/shaders/spv/vert.spv".as_ref(), Stage::Vertex).unwrap();
-    compile_hlsl("src/shaders/src/frag.hlsl".as_ref(), "src/shaders/spv/frag.spv".as_ref(), Stage::Fragment).unwrap();
+    compile_hlsl(
+        "src/shaders/src/vert.hlsl".as_ref(),
+        "src/shaders/spv/vert.spv".as_ref(),
+        Stage::Vertex,
+    )
+        .unwrap();
+    compile_hlsl(
+        "src/shaders/src/frag.hlsl".as_ref(),
+        "src/shaders/spv/frag.spv".as_ref(),
+        Stage::Fragment,
+    )
+        .unwrap();
 }
