@@ -181,6 +181,7 @@ impl<A: Allocator + 'static> Integration<A> {
             builder = builder.sample_image(input, PipelineStage::FRAGMENT_SHADER);
         }
 
+
         builder = builder.execute(move |cmd, ifc, _bindings| {
             let vtx_size = Self::vertex_buffer_size(&clipped_meshes);
             let idx_size = Self::index_buffer_size(&clipped_meshes);
