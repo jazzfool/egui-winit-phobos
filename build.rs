@@ -1,6 +1,4 @@
-use std::{env, fs};
-use std::fs::File;
-use std::io::Read;
+use std::{env};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -17,6 +15,7 @@ enum Stage {
     Fragment
 }
 
+#[allow(unreachable_patterns)]
 fn hlsl_profile(stage: Stage) -> Result<String> {
     Ok(match stage {
         Stage::Vertex => "vs",

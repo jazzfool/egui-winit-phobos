@@ -1,6 +1,5 @@
-use std::alloc::alloc;
 use std::sync::{Arc, Mutex};
-use egui::{Context, epaint, ImageData, TextureId};
+use egui::{Context, ImageData, TextureId};
 
 use phobos::prelude::*;
 
@@ -26,8 +25,6 @@ pub struct Integration<A: Allocator + 'static> {
     scale_factor: f32,
     textures: AHashMap<TextureId, (Image<A>, ImageView)>,
     user_textures: AHashMap<TextureId, ImageView>,
-    pipelines: Arc<Mutex<PipelineCache>>,
-    descriptors: Arc<Mutex<DescriptorCache>>,
 }
 
 impl<A: Allocator + 'static> Integration<A> {
@@ -45,8 +42,7 @@ impl<A: Allocator + 'static> Integration<A> {
         device: Arc<Device>,
         allocator: A,
         exec: ExecutionManager,
-        pipelines: Arc<Mutex<PipelineCache>>,
-        descriptors: Arc<Mutex<DescriptorCache>>,) -> Result<Self> {
+        pipelines: Arc<Mutex<PipelineCache>>) -> Result<Self> {
 
         let context = Context::default();
         context.set_fonts(font_definitions);
@@ -108,9 +104,7 @@ impl<A: Allocator + 'static> Integration<A> {
             height,
             scale_factor,
             textures: Default::default(),
-            user_textures: Default::default(),
-            pipelines,
-            descriptors,
+            user_textures: Default::default()
         })
     }
 
@@ -137,8 +131,8 @@ impl<A: Allocator + 'static> Integration<A> {
     }
 
     pub fn register_user_texture(&mut self, image_view: &ImageView) -> TextureId {
-        self.user_textures.insert(TextureId::User(image_view.id), image_view.clone());
-        TextureId::User(image_view.id)
+        self.user_textures.insert(TextureId::User(image_view.id()), image_view.clone());
+        TextureId::User(image_view.id())
     }
 
     pub fn unregister_user_texture(&mut self, texture_id: TextureId) {
@@ -187,7 +181,7 @@ impl<A: Allocator + 'static> Integration<A> {
             builder = builder.sample_image(input, PipelineStage::FRAGMENT_SHADER);
         }
 
-        builder = builder.execute(move |mut cmd, mut ifc, bindings| {
+        builder = builder.execute(move |cmd, ifc, _bindings| {
             let vtx_size = Self::vertex_buffer_size(&clipped_meshes);
             let idx_size = Self::index_buffer_size(&clipped_meshes);
             let mut vertex_buffer = ifc.allocate_scratch_vbo(vtx_size)?;
@@ -330,7 +324,7 @@ impl<A: Allocator + 'static> Integration<A> {
     async fn update_image(&self, _texture: TextureId, pos: [usize; 2], delta: &ImageDelta, src: &ImageView, dst: &ImageView) -> Result<()> {
         let top_left = vk::Offset3D { x: pos[0] as i32, y: pos[1] as i32, z: 0 };
         let bottom_right = vk::Offset3D { x: pos[0] as i32 + delta.image.width() as i32, y: pos[1] as i32 + delta.image.height() as i32, z: 1 };
-        let src_offsets = [ vk::Offset3D { x: 0, y: 0, z: 0 }, vk::Offset3D { x: dst.size.width as i32, y: dst.size.height as i32, z: dst.size.depth as i32 } ];
+        let src_offsets = [ vk::Offset3D { x: 0, y: 0, z: 0 }, vk::Offset3D { x: dst.width() as i32, y: dst.height() as i32, z: dst.depth() as i32 } ];
         let cmd = self.exec.on_domain::<domain::Graphics>(None, None)?
             .transition_image(
                 dst,
