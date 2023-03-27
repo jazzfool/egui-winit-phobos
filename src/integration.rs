@@ -397,21 +397,21 @@ impl<A: Allocator + 'static> Integration<A> {
             .on_domain::<domain::Graphics>(None, None)?
             .transition_image(
                 dst,
-                vk::PipelineStageFlags::TOP_OF_PIPE,
-                vk::PipelineStageFlags::TRANSFER,
+                PipelineStage::TOP_OF_PIPE,
+                PipelineStage::TRANSFER,
                 vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                vk::AccessFlags::NONE,
-                vk::AccessFlags::TRANSFER_WRITE,
+                vk::AccessFlags2::NONE,
+                vk::AccessFlags2::TRANSFER_WRITE,
             )
             .transition_image(
                 src,
-                vk::PipelineStageFlags::TOP_OF_PIPE,
-                vk::PipelineStageFlags::TRANSFER,
+                PipelineStage::TOP_OF_PIPE,
+                PipelineStage::TRANSFER,
                 vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                vk::AccessFlags::NONE,
-                vk::AccessFlags::TRANSFER_WRITE,
+                vk::AccessFlags2::NONE,
+                vk::AccessFlags2::TRANSFER_WRITE,
             )
             .blit_image(
                 src,
@@ -422,12 +422,12 @@ impl<A: Allocator + 'static> Integration<A> {
             )
             .transition_image(
                 dst,
-                vk::PipelineStageFlags::TRANSFER,
-                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                PipelineStage::TRANSFER,
+                PipelineStage::BOTTOM_OF_PIPE,
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-                vk::AccessFlags::TRANSFER_WRITE,
-                vk::AccessFlags::NONE,
+                vk::AccessFlags2::TRANSFER_WRITE,
+                vk::AccessFlags2::NONE,
             )
             .finish()?;
         self.exec.submit(cmd)?.await;
@@ -469,22 +469,22 @@ impl<A: Allocator + 'static> Integration<A> {
         let cmd = self.exec.on_domain::<domain::Transfer>(None, None)?;
         let cmd = cmd.transition_image(
             &view,
-            vk::PipelineStageFlags::TOP_OF_PIPE,
-            vk::PipelineStageFlags::TRANSFER,
+            PipelineStage::TOP_OF_PIPE,
+            PipelineStage::TRANSFER,
             vk::ImageLayout::UNDEFINED,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            vk::AccessFlags::NONE,
-            vk::AccessFlags::TRANSFER_WRITE,
+            vk::AccessFlags2::NONE,
+            vk::AccessFlags2::TRANSFER_WRITE,
         );
         let cmd = cmd.copy_buffer_to_image(&staging_view, &view)?;
         let cmd = cmd.transition_image(
             &view,
-            vk::PipelineStageFlags::TRANSFER,
-            vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+            PipelineStage::TRANSFER,
+            PipelineStage::BOTTOM_OF_PIPE,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-            vk::AccessFlags::TRANSFER_WRITE,
-            vk::AccessFlags::NONE,
+            vk::AccessFlags2::TRANSFER_WRITE,
+            vk::AccessFlags2::NONE,
         );
 
         let cmd = cmd.finish()?;
