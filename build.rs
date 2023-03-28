@@ -5,7 +5,7 @@ use std::process::Command;
 use anyhow::Result;
 
 fn get_dxc_path() -> Result<PathBuf> {
-    if cfg!(linux) {
+    if cfg!(target_os = "linux") {
         return Ok(PathBuf::from("/usr/bin/dxc"));
     } else {
         return Ok(env::var("VULKAN_SDK").map(|sdk| PathBuf::from(&sdk).join("Bin/dxc"))?);
