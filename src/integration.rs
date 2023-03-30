@@ -168,7 +168,7 @@ impl<A: Allocator + 'static> Integration<A> {
         self.height = height;
     }
 
-    pub async fn paint<'s: 'e, 'e, 'q>(
+    pub fn paint<'s: 'e, 'e, 'q>(
         &'s mut self,
         inputs: &[VirtualResource], // Sampled images
         output: &VirtualResource,
@@ -179,7 +179,7 @@ impl<A: Allocator + 'static> Integration<A> {
     ) -> Result<Pass<'e, 'q, domain::All, A>> {
         for (id, delta) in &textures_delta.set {
             trace!("Updating texture id: {:?}", id);
-            self.update_texture(*id, &delta).await?;
+            self.update_texture(*id, &delta)?;
         }
 
         // Free textures
@@ -349,15 +349,14 @@ impl<A: Allocator + 'static> Integration<A> {
         })
     }
 
-    async fn update_texture(&mut self, texture: TextureId, delta: &ImageDelta) -> Result<()> {
-        let (image, view) = self.upload_image(texture, &delta).await?;
+    fn update_texture(&mut self, texture: TextureId, delta: &ImageDelta) -> Result<()> {
+        let (image, view) = self.upload_image(texture, &delta)?;
         // We now have a texture in GPU memory. If delta pos exists, we need to update an existing texture.
         // Otherwise, we need to register it as a new texture
         if let Some(pos) = delta.pos {
             let existing_texture = self.textures.get(&texture);
             if let Some((_, existing_view)) = existing_texture {
-                self.update_image(texture, pos, &delta, &view, existing_view)
-                    .await?;
+                self.update_image(texture, pos, &delta, &view, existing_view)?;
             }
         } else {
             self.textures.insert(texture, (image, view));
@@ -366,7 +365,7 @@ impl<A: Allocator + 'static> Integration<A> {
         Ok(())
     }
 
-    async fn update_image(
+    fn update_image(
         &self,
         _texture: TextureId,
         pos: [usize; 2],
@@ -430,11 +429,11 @@ impl<A: Allocator + 'static> Integration<A> {
                 vk::AccessFlags2::NONE,
             )
             .finish()?;
-        self.exec.submit(cmd)?.await;
+        self.exec.submit(cmd)?.wait()?;
         Ok(())
     }
 
-    async fn upload_image(
+    fn upload_image(
         &mut self,
         _texture: TextureId,
         delta: &ImageDelta,
@@ -492,6 +491,6 @@ impl<A: Allocator + 'static> Integration<A> {
             .submit(cmd)?
             .with_cleanup(move || drop(staging))
             .attach_value(Ok((image, view)))
-            .await
+            .wait()?
     }
 }
