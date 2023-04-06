@@ -1,5 +1,4 @@
 use egui::{Context, ImageData, TextureId};
-use std::sync::{Arc, Mutex};
 
 use phobos::prelude::*;
 
@@ -16,7 +15,7 @@ use log::trace;
 pub struct Integration<A: Allocator + 'static> {
     context: Context,
     egui_winit: egui_winit::State,
-    device: Arc<Device>,
+    device: Device,
     allocator: A,
     exec: ExecutionManager,
     sampler: Sampler,
@@ -40,10 +39,10 @@ impl<A: Allocator + 'static> Integration<A> {
         event_loop: &EventLoop<T>,
         font_definitions: egui::FontDefinitions,
         style: egui::Style,
-        device: Arc<Device>,
+        device: Device,
         allocator: A,
         exec: ExecutionManager,
-        pipelines: Arc<Mutex<PipelineCache>>,
+        mut pipelines: PipelineCache,
     ) -> Result<Self> {
         let context = Context::default();
         context.set_fonts(font_definitions);
@@ -80,9 +79,7 @@ impl<A: Allocator + 'static> Integration<A> {
             )
             .build();
 
-        {
-            pipelines.lock().unwrap().create_named_pipeline(pci)?;
-        }
+        pipelines.create_named_pipeline(pci)?;
 
         let sampler = Sampler::new(
             device.clone(),

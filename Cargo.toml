@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-phobos = { git = "https://github.com/NotAPenguin0/phobos-rs", branch = "develop", features = ["shader-reflection", "hlsl"] }
+phobos = { git = "https://github.com/NotAPenguin0/phobos-rs", features = ["shader-reflection", "hlsl"] }
 anyhow = "1.0.53"
 egui = "0.21.0"
 egui-winit = "0.21.0"
