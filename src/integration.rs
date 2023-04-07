@@ -11,6 +11,7 @@ use egui_winit::EventResponse;
 use winit::window::Window;
 
 use log::trace;
+use phobos::domain::ExecutionDomain;
 
 pub struct Integration<A: Allocator + 'static> {
     context: Context,
@@ -165,7 +166,7 @@ impl<A: Allocator + 'static> Integration<A> {
         self.height = height;
     }
 
-    pub fn paint<'s: 'e, 'e, 'q>(
+    pub fn paint<'s: 'e, 'e, 'q, D: ExecutionDomain + GfxSupport, U>(
         &'s mut self,
         inputs: &[VirtualResource], // Sampled images
         output: &VirtualResource,
@@ -173,7 +174,7 @@ impl<A: Allocator + 'static> Integration<A> {
         clear_value: Option<vk::ClearColorValue>,
         clipped_meshes: Vec<egui::ClippedPrimitive>,
         textures_delta: egui::TexturesDelta,
-    ) -> Result<Pass<'e, 'q, domain::All, A>> {
+    ) -> Result<Pass<'e, 'q, D, U, A>> {
         for (id, delta) in &textures_delta.set {
             trace!("Updating texture id: {:?}", id);
             self.update_texture(*id, &delta)?;
@@ -186,21 +187,21 @@ impl<A: Allocator + 'static> Integration<A> {
         self.get_pass(clipped_meshes, inputs, output, load_op, clear_value)
     }
 
-    fn get_pass<'s: 'e, 'e, 'q>(
+    fn get_pass<'s: 'e, 'e, 'q, D: ExecutionDomain + GfxSupport, U>(
         &'s mut self,
         clipped_meshes: Vec<egui::ClippedPrimitive>,
         inputs: &[VirtualResource], // Sampled images
         output: &VirtualResource,
         load_op: vk::AttachmentLoadOp,
         clear_value: Option<vk::ClearColorValue>,
-    ) -> Result<Pass<'e, 'q, domain::All, A>> {
+    ) -> Result<Pass<'e, 'q, D, U, A>> {
         let mut builder =
             PassBuilder::render("egui_render").color_attachment(output, load_op, clear_value)?;
         for input in inputs {
             builder = builder.sample_image(input, PipelineStage::FRAGMENT_SHADER);
         }
 
-        builder = builder.execute(move |cmd, ifc, _bindings| {
+        builder = builder.execute(move |cmd, ifc, _bindings, _| {
             let vtx_size = Self::vertex_buffer_size(&clipped_meshes);
             let idx_size = Self::index_buffer_size(&clipped_meshes);
             let mut vertex_buffer = ifc.allocate_scratch_vbo(vtx_size)?;
