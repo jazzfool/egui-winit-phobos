@@ -391,7 +391,7 @@ impl<A: Allocator + 'static> Integration<A> {
         ];
         let cmd = self
             .exec
-            .on_domain::<domain::Graphics>(None, None)?
+            .on_domain::<domain::Graphics, A>(None, None)?
             .transition_image(
                 dst,
                 PipelineStage::TOP_OF_PIPE,
@@ -463,7 +463,7 @@ impl<A: Allocator + 'static> Integration<A> {
         )?;
         let view = image.view(vk::ImageAspectFlags::COLOR)?;
 
-        let cmd = self.exec.on_domain::<domain::Transfer>(None, None)?;
+        let cmd = self.exec.on_domain::<domain::Transfer, A>(None, None)?;
         let cmd = cmd.transition_image(
             &view,
             PipelineStage::TOP_OF_PIPE,
