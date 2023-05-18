@@ -384,9 +384,9 @@ impl<A: Allocator + 'static> Integration<A> {
         let src_offsets = [
             vk::Offset3D { x: 0, y: 0, z: 0 },
             vk::Offset3D {
-                x: dst.width() as i32,
-                y: dst.height() as i32,
-                z: dst.depth() as i32,
+                x: src.width() as i32,
+                y: src.height() as i32,
+                z: src.depth() as i32,
             },
         ];
         let cmd = self
