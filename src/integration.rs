@@ -18,7 +18,7 @@ pub struct Integration<A: Allocator + 'static> {
     egui_winit: egui_winit::State,
     device: Device,
     allocator: A,
-    exec: ExecutionManager,
+    exec: ExecutionManager<A>,
     sampler: Sampler,
     width: u32,
     height: u32,
@@ -42,7 +42,7 @@ impl<A: Allocator + 'static> Integration<A> {
         style: egui::Style,
         device: Device,
         allocator: A,
-        exec: ExecutionManager,
+        exec: ExecutionManager<A>,
         mut pipelines: PipelineCache,
     ) -> Result<Self> {
         let context = Context::default();
@@ -391,7 +391,7 @@ impl<A: Allocator + 'static> Integration<A> {
         ];
         let cmd = self
             .exec
-            .on_domain::<domain::Graphics, A>(None, None)?
+            .on_domain::<domain::Graphics>()?
             .transition_image(
                 dst,
                 PipelineStage::TOP_OF_PIPE,
@@ -463,7 +463,7 @@ impl<A: Allocator + 'static> Integration<A> {
         )?;
         let view = image.view(vk::ImageAspectFlags::COLOR)?;
 
-        let cmd = self.exec.on_domain::<domain::Transfer, A>(None, None)?;
+        let cmd = self.exec.on_domain::<domain::Transfer>()?;
         let cmd = cmd.transition_image(
             &view,
             PipelineStage::TOP_OF_PIPE,
@@ -485,10 +485,7 @@ impl<A: Allocator + 'static> Integration<A> {
         );
 
         let cmd = cmd.finish()?;
-        self.exec
-            .submit(cmd)?
-            .with_cleanup(move || drop(staging))
-            .attach_value(Ok((image, view)))
-            .wait()?
+        self.exec.submit(cmd)?.wait()?;
+        Ok((image, view))
     }
 }
