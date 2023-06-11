@@ -43,7 +43,7 @@ impl<A: Allocator + 'static> Integration<A> {
         device: Device,
         allocator: A,
         exec: ExecutionManager<A>,
-        mut pipelines: PipelineCache,
+        mut pipelines: PipelineCache<A>,
     ) -> Result<Self> {
         let context = Context::default();
         context.set_fonts(font_definitions);
@@ -201,11 +201,11 @@ impl<A: Allocator + 'static> Integration<A> {
             builder = builder.sample_image(input, PipelineStage::FRAGMENT_SHADER);
         }
 
-        builder = builder.execute_fn(move |cmd, ifc, _bindings, _| {
+        builder = builder.execute_fn(move |cmd, pool, _bindings, _| {
             let vtx_size = Self::vertex_buffer_size(&clipped_meshes);
             let idx_size = Self::index_buffer_size(&clipped_meshes);
-            let mut vertex_buffer = ifc.allocate_scratch_vbo(vtx_size)?;
-            let mut idx_buffer = ifc.allocate_scratch_ibo(idx_size)?;
+            let mut vertex_buffer = pool.allocate_scratch_vbo(vtx_size)?;
+            let mut idx_buffer = pool.allocate_scratch_ibo(idx_size)?;
             let mut vtx_offset = 0 as usize;
             let mut idx_offset = 0 as usize;
             let mut vertex_base = 0;
