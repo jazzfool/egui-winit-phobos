@@ -75,8 +75,8 @@ impl<A: Allocator + 'static> Integration<A> {
             .blend_additive_unmasked(
                 vk::BlendFactor::SRC_ALPHA,
                 vk::BlendFactor::ONE_MINUS_SRC_ALPHA,
+                vk::BlendFactor::ONE_MINUS_DST_ALPHA,
                 vk::BlendFactor::ONE,
-                vk::BlendFactor::ZERO,
             )
             .build();
 
